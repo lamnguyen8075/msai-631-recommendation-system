@@ -1,11 +1,11 @@
-# AI Hobby Recommendation System
+# AI Movie Recommendation System
 
-A content-based hobby recommender built with Python and Streamlit. It uses TF-IDF and cosine similarity to suggest hobbies similar to one you already enjoy, based on categories and descriptions.
+A content-based movie recommender built with Python and Streamlit. It uses TF-IDF and cosine similarity to suggest movies similar to one you already enjoy, based on genres and descriptions.
 
 ## Features
 
-- Hobby picker with top-N recommendations
-- Category and popularity filters
+- Movie picker with top-N recommendations
+- Genre and rating filters
 - Similarity scores and short explanations for each result
 
 ## How to Run
@@ -19,4 +19,4 @@ streamlit run app.py
 
 - `app.py` — Streamlit UI
 - `recommender.py` — recommendation engine
-- `hobbies.csv` — sample dataset
+- `movies.csv` — sample dataset

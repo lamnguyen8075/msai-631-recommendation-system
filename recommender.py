@@ -1,7 +1,7 @@
-"""Content-based hobby recommendation engine.
+"""Content-based movie recommendation engine.
 
 This module uses TF-IDF vectorization and cosine similarity to recommend
-hobbies with similar categories and descriptions. It is intentionally small and
+movies with similar genres and descriptions. It is intentionally small and
 readable for a course project submission.
 """
 
@@ -19,85 +19,85 @@ from sklearn.metrics.pairwise import cosine_similarity
 @dataclass
 class RecommendationResult:
     title: str
-    categories: str
-    difficulty: int
-    popularity: float
+    genres: str
+    year: int
+    rating: float
     similarity_score: float
     explanation: str
 
 
-class HobbyRecommender:
-    """A content-based hobby recommender using TF-IDF and cosine similarity."""
+class MovieRecommender:
+    """A content-based movie recommender using TF-IDF and cosine similarity."""
 
-    def __init__(self, csv_path: str | Path = "hobbies.csv") -> None:
+    def __init__(self, csv_path: str | Path = "movies.csv") -> None:
         self.csv_path = Path(csv_path)
-        self.hobbies = self._load_hobbies()
+        self.movies = self._load_movies()
         self.vectorizer = TfidfVectorizer(stop_words="english")
-        self.feature_matrix = self.vectorizer.fit_transform(self.hobbies["combined_features"])
+        self.feature_matrix = self.vectorizer.fit_transform(self.movies["combined_features"])
         self.similarity_matrix = cosine_similarity(self.feature_matrix)
 
-    def _load_hobbies(self) -> pd.DataFrame:
+    def _load_movies(self) -> pd.DataFrame:
         if not self.csv_path.exists():
             raise FileNotFoundError(f"Could not find dataset at {self.csv_path}")
 
-        hobbies = pd.read_csv(self.csv_path)
-        required_columns = {"title", "categories", "description", "difficulty", "popularity"}
-        missing = required_columns - set(hobbies.columns)
+        movies = pd.read_csv(self.csv_path)
+        required_columns = {"title", "genres", "description", "year", "rating"}
+        missing = required_columns - set(movies.columns)
         if missing:
             raise ValueError(f"Dataset is missing required columns: {missing}")
 
-        hobbies = hobbies.dropna(subset=["title", "categories", "description"]).copy()
-        hobbies["combined_features"] = (
-            hobbies["title"].astype(str) + " " +
-            hobbies["categories"].astype(str) + " " +
-            hobbies["description"].astype(str)
+        movies = movies.dropna(subset=["title", "genres", "description"]).copy()
+        movies["combined_features"] = (
+            movies["title"].astype(str) + " " +
+            movies["genres"].astype(str) + " " +
+            movies["description"].astype(str)
         )
-        return hobbies.reset_index(drop=True)
+        return movies.reset_index(drop=True)
 
     def get_titles(self) -> List[str]:
-        return sorted(self.hobbies["title"].tolist())
+        return sorted(self.movies["title"].tolist())
 
     def recommend(
         self,
         title: str,
         top_n: int = 5,
-        category_filter: Optional[str] = None,
-        min_popularity: float = 0.0,
+        genre_filter: Optional[str] = None,
+        min_rating: float = 0.0,
     ) -> List[RecommendationResult]:
-        """Return similar hobbies for a selected title.
+        """Return similar movies for a selected title.
 
         Args:
-            title: Hobby title selected by the user.
+            title: Movie title selected by the user.
             top_n: Number of recommendations to return.
-            category_filter: Optional category filter chosen by the user.
-            min_popularity: Minimum popularity selected by the user.
+            genre_filter: Optional genre filter chosen by the user.
+            min_rating: Minimum rating selected by the user.
         """
-        if title not in self.hobbies["title"].values:
-            raise ValueError(f"Hobby title '{title}' was not found in the dataset.")
+        if title not in self.movies["title"].values:
+            raise ValueError(f"Movie title '{title}' was not found in the dataset.")
 
-        hobby_index = self.hobbies.index[self.hobbies["title"] == title][0]
-        similarity_scores = list(enumerate(self.similarity_matrix[hobby_index]))
+        movie_index = self.movies.index[self.movies["title"] == title][0]
+        similarity_scores = list(enumerate(self.similarity_matrix[movie_index]))
         similarity_scores = sorted(similarity_scores, key=lambda item: item[1], reverse=True)
 
         results: List[RecommendationResult] = []
         for index, score in similarity_scores:
-            candidate = self.hobbies.iloc[index]
+            candidate = self.movies.iloc[index]
             if candidate["title"] == title:
                 continue
-            if candidate["popularity"] < min_popularity:
+            if candidate["rating"] < min_rating:
                 continue
-            if category_filter and category_filter != "All":
-                candidate_categories = str(candidate["categories"]).lower()
-                if category_filter.lower() not in candidate_categories:
+            if genre_filter and genre_filter != "All":
+                candidate_genres = str(candidate["genres"]).lower()
+                if genre_filter.lower() not in candidate_genres:
                     continue
 
-            explanation = self._build_explanation(title, candidate["title"], candidate["categories"], score)
+            explanation = self._build_explanation(title, candidate["title"], candidate["genres"], score)
             results.append(
                 RecommendationResult(
                     title=str(candidate["title"]),
-                    categories=str(candidate["categories"]),
-                    difficulty=int(candidate["difficulty"]),
-                    popularity=float(candidate["popularity"]),
+                    genres=str(candidate["genres"]),
+                    year=int(candidate["year"]),
+                    rating=float(candidate["rating"]),
                     similarity_score=round(float(score), 3),
                     explanation=explanation,
                 )
@@ -106,17 +106,17 @@ class HobbyRecommender:
                 break
         return results
 
-    def available_categories(self) -> List[str]:
-        category_set = set()
-        for categories in self.hobbies["categories"]:
-            for category in str(categories).split():
-                category_set.add(category.strip())
-        return ["All"] + sorted(category_set)
+    def available_genres(self) -> List[str]:
+        genre_set = set()
+        for genres in self.movies["genres"]:
+            for genre in str(genres).split():
+                genre_set.add(genre.strip())
+        return ["All"] + sorted(genre_set)
 
     @staticmethod
-    def _build_explanation(source_title: str, candidate_title: str, categories: str, score: float) -> str:
+    def _build_explanation(source_title: str, candidate_title: str, genres: str, score: float) -> str:
         return (
-            f"{candidate_title} is recommended because its category/description profile "
-            f"is similar to {source_title}. Shared context includes: {categories}. "
+            f"{candidate_title} is recommended because its genre/description profile "
+            f"is similar to {source_title}. Shared context includes: {genres}. "
             f"Cosine similarity score: {score:.3f}."
         )
